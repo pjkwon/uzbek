@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UZ Gov Chatbot — Training Tool</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#f0f4f8; --surface:#fff; --primary:#1a56a0; --primary-dark:#133f7a;
+  --accent:#2e9e6b; --accent-light:#e6f7f0; --danger:#c0392b; --danger-light:#fdf0ef;
+  --text:#1c2b3a; --muted:#6b7c93; --border:#dce3ec;
+  --user:#1a56a0; --bot:#f0f4f8; --shadow:0 2px 12px rgba(26,86,160,.08);
+  --gemini:#1a73e8; --gemini-light:#e8f0fe;
+}
+body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+header { background:var(--primary); color:#fff; padding:14px 24px; display:flex; align-items:center; gap:12px; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+.h-flag { font-size:28px; }
+.h-title { font-size:17px; font-weight:700; }
+.h-sub { font-size:12px; opacity:.75; margin-top:2px; }
+.h-badge { margin-left:auto; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.3); border-radius:20px; padding:4px 12px; font-size:11px; font-weight:600; }
+.app { display:flex; flex:1; max-width:1100px; width:100%; margin:0 auto; padding:20px 16px; gap:20px; }
+.sidebar { width:320px; flex-shrink:0; display:flex; flex-direction:column; gap:16px; }
+.card { background:var(--surface); border-radius:12px; padding:18px; box-shadow:var(--shadow); border:1px solid var(--border); }
+.card-title { font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+.ptoggle { display:flex; border:1.5px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:12px; }
+.pbtn { flex:1; padding:9px 4px; font-size:12px; font-weight:600; border:none; cursor:pointer; background:#fff; color:var(--muted); transition:all .15s; }
+.pbtn:first-child { border-right:1.5px solid var(--border); }
+.pbtn.a-claude { background:var(--primary); color:#fff; }
+.pbtn.a-gemini { background:var(--gemini); color:#fff; }
+.pbtn:hover:not(.a-claude):not(.a-gemini) { background:var(--bg); }
+.api-row { display:flex; gap:8px; }
+.api-input { flex:1; border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; font-size:12px; font-family:'Courier New',monospace; color:var(--text); outline:none; min-width:0; transition:border-color .2s; }
+.api-input:focus { border-color:var(--primary); }
+.api-hint { font-size:11px; color:var(--muted); margin-top:5px; }
+.api-hint a { color:var(--primary); text-decoration:none; }
+.api-hint a:hover { text-decoration:underline; }
+.mbadge { display:inline-block; font-size:11px; padding:3px 8px; border-radius:10px; font-weight:600; margin-top:6px; }
+.mbadge.claude { background:#eef2ff; color:var(--primary); }
+.mbadge.gemini { background:var(--gemini-light); color:var(--gemini); }
+.api-status { margin-top:8px; font-size:12px; padding:6px 10px; border-radius:6px; display:none; }
+.api-status.ok { background:var(--accent-light); color:var(--accent); display:block; }
+.api-status.err { background:var(--danger-light); color:var(--danger); display:block; }
+.btn { border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; transition:background .15s,transform .1s; }
+.btn:active { transform:scale(.97); }
+.btn-p { background:var(--primary); color:#fff; }
+.btn-p:hover { background:var(--primary-dark); }
+.btn-sm { padding:6px 10px; font-size:12px; }
+.btn-o { background:transparent; border:1.5px solid var(--border); color:var(--muted); }
+.btn-o:hover { border-color:var(--primary); color:var(--primary); }
+.btn-apply { background:var(--accent); color:#fff; }
+.btn-apply:hover { background:#27855a; }
+.prompt-saved { font-size:11px; color:var(--accent); margin-top:6px; display:none; }
+.prompt-saved.show { display:block; }
+.prompt-ta { width:100%; border:1.5px solid var(--border); border-radius:8px; padding:10px 12px; font-size:12.5px; font-family:'Segoe UI',sans-serif; color:var(--text); resize:vertical; min-height:180px; outline:none; line-height:1.6; transition:border-color .2s; }
+.prompt-ta:focus { border-color:var(--primary); }
+.pa { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; align-items:center; }
+.cc { margin-left:auto; font-size:11px; color:var(--muted); }
+.tip-list { list-style:none; display:flex; flex-direction:column; gap:8px; }
+.tip-list li { font-size:12.5px; color:var(--muted); padding-left:16px; position:relative; line-height:1.5; }
+.tip-list li::before { content:'→'; position:absolute; left:0; color:var(--primary); font-weight:700; }
+.chat-panel { flex:1; display:flex; flex-direction:column; background:var(--surface); border-radius:12px; box-shadow:var(--shadow); border:1px solid var(--border); overflow:hidden; }
+.chat-hd { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+.bot-av { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--accent)); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.bot-name { font-size:14px; font-weight:700; }
+.bot-desc { font-size:12px; color:var(--muted); }
+.sdot { width:8px; height:8px; border-radius:50%; background:#ccc; margin-left:auto; flex-shrink:0; transition:background .3s; }
+.sdot.on { background:var(--accent); box-shadow:0 0 0 3px var(--accent-light); }
+.pind { font-size:11px; font-weight:600; padding:3px 8px; border-radius:10px; margin-left:6px; }
+.pind.claude { background:#eef2ff; color:var(--primary); }
+.pind.gemini { background:var(--gemini-light); color:var(--gemini); }
+.msgs { flex:1; overflow-y:auto; padding:20px 18px; display:flex; flex-direction:column; gap:16px; scroll-behavior:smooth; }
+.welcome { text-align:center; padding:40px 20px; color:var(--muted); }
+.welcome-icon { font-size:48px; margin-bottom:12px; }
+.welcome h3 { font-size:16px; color:var(--text); margin-bottom:8px; }
+.welcome p { font-size:13px; line-height:1.6; }
+.msg { display:flex; gap:10px; max-width:88%; }
+.msg.user { align-self:flex-end; flex-direction:row-reverse; }
+.msg.bot { align-self:flex-start; }
+.mav { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; margin-top:2px; }
+.msg.user .mav { background:var(--user); }
+.msg.bot .mav { background:var(--bot); border:1px solid var(--border); }
+.mbub { padding:11px 15px; border-radius:14px; font-size:14px; line-height:1.65; max-width:100%; word-break:break-word; white-space:pre-wrap; }
+.msg.user .mbub { background:var(--user); color:#fff; border-bottom-right-radius:4px; }
+.msg.bot .mbub { background:var(--bot); color:var(--text); border:1px solid var(--border); border-bottom-left-radius:4px; }
+.mmeta { font-size:10px; color:var(--muted); margin-top:4px; }
+.msg.user .mmeta { text-align:right; }
+.typing .mbub { display:flex; align-items:center; gap:5px; padding:14px 16px; }
+.tdot { width:7px; height:7px; border-radius:50%; background:var(--muted); animation:bonce 1.2s infinite; }
+.tdot:nth-child(2){animation-delay:.2s}.tdot:nth-child(3){animation-delay:.4s}
+@keyframes bonce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.cin-area { padding:14px 16px; border-top:1px solid var(--border); display:flex; gap:10px; align-items:flex-end; background:#fafbfc; }
+.cin { flex:1; border:1.5px solid var(--border); border-radius:10px; padding:10px 14px; font-size:14px; font-family:inherit; resize:none; outline:none; max-height:120px; line-height:1.5; transition:border-color .2s; background:#fff; }
+.cin:focus { border-color:var(--primary); }
+.sbtn { width:42px; height:42px; border-radius:10px; background:var(--primary); color:#fff; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:18px; transition:background .15s; flex-shrink:0; }
+.sbtn:hover { background:var(--primary-dark); }
+.sbtn:active { transform:scale(.95); }
+.sbtn:disabled { background:var(--border); cursor:not-allowed; }
+.quick-qs { padding:0 16px 12px; display:flex; flex-wrap:wrap; gap:6px; background:#fafbfc; }
+.qq { background:#fff; border:1.5px solid var(--border); border-radius:20px; padding:5px 12px; font-size:12px; color:var(--primary); cursor:pointer; transition:all .15s; white-space:nowrap; }
+.qq:hover { background:var(--primary); color:#fff; border-color:var(--primary); }
+.toolbar { padding:8px 16px 0; display:flex; justify-content:flex-end; background:#fafbfc; }
+.errbanner { background:var(--danger-light); border:1px solid #f5c6c2; border-radius:8px; padding:10px 14px; font-size:13px; color:var(--danger); margin:8px 18px 0; display:none; }
+.errbanner.show { display:block; }
+.msgs::-webkit-scrollbar{width:5px}.msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@media(max-width:720px){.app{flex-direction:column;padding:12px}.sidebar{width:100%}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="h-flag">🇺🇿</div>
+  <div>
+    <div class="h-title">UZ Gov FAQ Chatbot — Training Tool</div>
+    <div class="h-sub">AI 민원 챗봇 실습 도구 · Учебный инструмент · O'quv vositasi</div>
+  </div>
+  <div class="h-badge">TRAINING ONLY</div>
+</header>
+
+<div class="app">
+  <aside class="sidebar">
+
+    <div class="card">
+      <div class="card-title">🔌 AI 제공자 선택</div>
+      <div class="ptoggle">
+        <button class="pbtn a-claude" id="btnClaude" onclick="selectProvider('claude')">🤖 Claude (Anthropic)</button>
+        <button class="pbtn" id="btnGemini" onclick="selectProvider('gemini')">✨ Gemini (Google)</button>
+      </div>
+      <div class="api-row">
+        <input type="password" class="api-input" id="apiKey" placeholder="API 키를 입력하세요..." autocomplete="off">
+        <button class="btn btn-p btn-sm" onclick="saveKey()">저장</button>
+      </div>
+      <div class="api-hint" id="apiHint">Anthropic 키: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></div>
+      <div id="modelBadge" class="mbadge claude">claude-sonnet-4-6</div>
+      <div class="api-status" id="apiStatus"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⚙️ System Prompt</div>
+      <textarea class="prompt-ta" id="systemPrompt" oninput="updateCC()"></textarea>
+      <div class="pa">
+        <button class="btn btn-p btn-sm" onclick="loadTpl()">기본 템플릿</button>
+        <button class="btn btn-apply btn-sm" onclick="applyPrompt()">✓ 적용</button>
+        <button class="btn btn-o btn-sm" onclick="clearPrompt()">지우기</button>
+        <span class="cc" id="cc">0자</span>
+      </div>
+      <div class="prompt-saved" id="promptSaved">프롬프트가 적용됐습니다. 대화를 초기화하고 테스트하세요.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💡 실습 팁</div>
+      <ul class="tip-list">
+        <li>Claude vs Gemini 답변을 비교해보세요</li>
+        <li>FAQ에 없는 질문을 해보세요</li>
+        <li>민감한 질문도 테스트하세요</li>
+        <li>오답이 나오면 Prompt를 수정하고 재테스트하세요</li>
+        <li>이것이 바로 Human-in-the-loop입니다</li>
+      </ul>
+    </div>
+
+  </aside>
+
+  <div class="chat-panel">
+    <div class="chat-hd">
+      <div class="bot-av">🏛️</div>
+      <div>
+        <div class="bot-name">UZ 민원봇 <span class="pind claude" id="pind">Claude</span></div>
+        <div class="bot-desc">우즈베키스탄 민원 안내 챗봇</div>
+      </div>
+      <div class="sdot" id="sdot"></div>
+    </div>
+
+    <div class="msgs" id="msgs">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">🏛️</div>
+        <h3>챗봇 실습에 오신 것을 환영합니다</h3>
+        <p>① AI 제공자와 API 키를 선택·입력하세요<br>
+           ② System Prompt에 FAQ를 작성하세요<br>
+           ③ Claude와 Gemini를 비교해보세요</p>
+      </div>
+    </div>
+
+    <div class="errbanner" id="err"></div>
+
+    <div class="toolbar">
+      <button class="btn btn-o btn-sm" onclick="clearChat()">대화 초기화</button>
+    </div>
+
+    <div class="quick-qs">
+      <span class="qq" onclick="sendQ(this)">주민등록 확인서 발급 방법은?</span>
+      <span class="qq" onclick="sendQ(this)">사업자 등록 어떻게 하나요?</span>
+      <span class="qq" onclick="sendQ(this)">민원 처리 기간은?</span>
+      <span class="qq" onclick="sendQ(this)">이 서류가 법적으로 유효한가요?</span>
+      <span class="qq" onclick="sendQ(this)">제 개인정보를 조회해주세요</span>
+    </div>
+
+    <div class="cin-area">
+      <textarea class="cin" id="cin"
+        placeholder="질문을 입력하세요... (Enter: 전송, Shift+Enter: 줄바꿈)"
+        rows="1" onkeydown="onKey(event)" oninput="resize(this)"></textarea>
+      <button class="sbtn" id="sbtn" onclick="send()">➤</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let msgs = [], loading = false, provider = 'claude';
+
+const MODELS = { claude: 'claude-sonnet-4-6', gemini: 'gemini-2.5-flash' };
+const HINTS = {
+  claude: 'Anthropic 키: <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>',
+  gemini: 'Google 키: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a>'
+};
+
+const TPL = `당신은 "UZ 민원봇"입니다. 우즈베키스탄 정부 민원 안내 챗봇입니다.
+
+역할:
+- 민원인의 질문에 정중하고 명확하게 답변합니다.
+- 반드시 아래 FAQ 목록을 기반으로만 답변합니다.
+- FAQ에 없는 질문에는 다음과 같이 안내합니다:
+  "해당 사항은 담당자에게 직접 문의해 주시기 바랍니다. 전화: 1218 (24시간 운영)"
+- 모르는 정보를 절대 지어내지 않습니다.
+
+말투: 정중하고 공식적으로, 짧고 명확하게.
+
+FAQ:
+Q1: 주민등록 확인서는 어디서 발급받을 수 있나요?
+A1: 주민센터(MFU) 방문 또는 my.gov.uz에서 온라인 발급 가능합니다. 신분증 필수.
+
+Q2: 사업자 등록 신청은 어떻게 하나요?
+A2: my.gov.uz 또는 MFU에서 신청. 신분증, 사업장 주소, 업종 정보 필요. 처리 1 영업일.
+
+Q3: 민원 처리 기간은 얼마나 걸리나요?
+A3: 일반 민원 3~5 영업일, 토지·부동산 최대 15 영업일, 긴급 민원 1 영업일 이내.
+
+Q4: 민원 처리 현황은 어디서 확인하나요?
+A4: my.gov.uz 로그인 후 '내 민원' 메뉴에서 실시간 확인 가능합니다.
+
+Q5: One ID 계정은 어떻게 만드나요?
+A5: id.egov.uz에서 신분증 번호와 휴대폰 번호로 본인 인증 후 생성 가능합니다.
+
+여기에 FAQ를 추가해보세요 →`;
+
+window.onload = () => {
+  document.getElementById('systemPrompt').value = TPL;
+  updateCC();
+  const sp = sessionStorage.getItem('uz_prov') || 'claude';
+  selectProvider(sp, false);
+  const sk = sessionStorage.getItem('uz_key_' + sp);
+  if (sk) { document.getElementById('apiKey').value = sk; setStatus(true); }
+};
+
+function selectProvider(p, resetKey = true) {
+  provider = p;
+  sessionStorage.setItem('uz_prov', p);
+  document.getElementById('btnClaude').className = 'pbtn' + (p === 'claude' ? ' a-claude' : '');
+  document.getElementById('btnGemini').className = 'pbtn' + (p === 'gemini' ? ' a-gemini' : '');
+  document.getElementById('apiHint').innerHTML = HINTS[p];
+  const b = document.getElementById('modelBadge');
+  b.textContent = MODELS[p]; b.className = 'mbadge ' + p;
+  const ind = document.getElementById('pind');
+  ind.textContent = p === 'claude' ? 'Claude' : 'Gemini';
+  ind.className = 'pind ' + p;
+  if (resetKey) {
+    const sk = sessionStorage.getItem('uz_key_' + p);
+    document.getElementById('apiKey').value = sk || '';
+    if (sk) setStatus(true);
+    else { const s = document.getElementById('apiStatus'); s.className = 'api-status'; s.textContent = ''; }
+  }
+}
+
+function saveKey() {
+  const key = document.getElementById('apiKey').value.trim();
+  if (!key) { setStatus(false, 'API 키를 입력해주세요.'); return; }
+  // 키 형식 검증 — Claude: sk- 로 시작, Gemini: 길이 20자 이상 (AIza 또는 그 외 형식 모두 허용)
+  if (provider === 'claude' && !key.startsWith('sk-')) {
+    setStatus(false, 'Claude 키는 sk- 로 시작해야 합니다.'); return;
+  }
+  if (provider === 'gemini' && key.length < 20) {
+    setStatus(false, 'Google API 키가 너무 짧습니다. 다시 확인해주세요.'); return;
+  }
+  sessionStorage.setItem('uz_key_' + provider, key);
+  setStatus(true);
+  document.getElementById('sdot').classList.add('on');
+}
+
+function setStatus(ok, msg) {
+  const el = document.getElementById('apiStatus');
+  const name = provider === 'claude' ? 'Claude' : 'Gemini';
+  el.className = 'api-status ' + (ok ? 'ok' : 'err');
+  el.textContent = ok ? '✓ ' + name + ' API 키 저장 완료. 대화를 시작하세요.' : ('✗ ' + (msg || '오류'));
+}
+
+function applyPrompt() {
+  const sp = document.getElementById('systemPrompt').value.trim();
+  if (!sp) return;
+  // 대화 기록 초기화 (새 프롬프트로 새 세션 시작)
+  msgs = [];
+  document.getElementById('msgs').innerHTML = '<div class="welcome" id="welcome"><div class="welcome-icon">🏛️</div></div>';
+  // 저장 완료 표시
+  const saved = document.getElementById('promptSaved');
+  saved.classList.add('show');
+  setTimeout(() => saved.classList.remove('show'), 3000);
+}
+
+function loadTpl() { document.getElementById('systemPrompt').value = TPL; updateCC(); }
+function clearPrompt() { document.getElementById('systemPrompt').value = ''; updateCC(); }
+function updateCC() { document.getElementById('cc').textContent = document.getElementById('systemPrompt').value.length.toLocaleString() + '자'; }
+function onKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
+function resize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+function sendQ(el) { document.getElementById('cin').value = el.textContent; send(); }
+
+async function send() {
+  if (loading) return;
+  const cin = document.getElementById('cin');
+  const text = cin.value.trim();
+  if (!text) return;
+  const key = sessionStorage.getItem('uz_key_' + provider) || document.getElementById('apiKey').value.trim();
+  if (!key) { showErr('먼저 API 키를 입력하고 저장하세요.'); return; }
+  const sp = document.getElementById('systemPrompt').value.trim();
+  if (!sp) { showErr('System Prompt를 입력해주세요.'); return; }
+  const w = document.getElementById('welcome'); if (w) w.remove();
+  hideErr(); cin.value = ''; cin.style.height = 'auto';
+  msgs.push({ role: 'user', content: text });
+  addMsg('user', text);
+  loading = true; document.getElementById('sbtn').disabled = true;
+  const tid = addTyping();
+  try {
+    let reply;
+    if (provider === 'claude') {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: MODELS.claude, max_tokens: 1000, system: sp, messages: msgs })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message || 'HTTP ' + r.status); }
+      const d = await r.json(); reply = d.content[0]?.text || '(응답 없음)';
+    } else {
+      const gm = msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+      const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + MODELS.gemini + ':generateContent?key=' + encodeURIComponent(key), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ system_instruction: { parts: [{ text: sp }] }, contents: gm, generationConfig: { maxOutputTokens: 1000, temperature: 0.3 } })
+      });
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message || 'HTTP ' + r.status); }
+      const d = await r.json(); reply = d.candidates?.[0]?.content?.parts?.[0]?.text || '(응답 없음)';
+    }
+    msgs.push({ role: 'assistant', content: reply });
+    addMsg('bot', reply);
+  } catch (e) {
+    let m = e.message;
+    if (m.includes('401') || m.includes('API_KEY_INVALID') || m.includes('PERMISSION_DENIED')) m = 'API 키가 올바르지 않습니다. 다시 확인해주세요.';
+    else if (m.includes('Failed to fetch') || m.includes('NetworkError') || m.includes('TypeError')) m = 'API 호출 실패. CORS 문제일 수 있습니다 — Chrome 사용을 권장합니다.';
+    else if (m.includes('429')) m = '요청이 너무 많습니다. 잠시 후 다시 시도하세요.';
+    else if (m.includes('404')) m = '모델을 찾을 수 없습니다. API 키가 Gemini API에 활성화되어 있는지 확인하세요.';
+    showErr('오류 (' + (provider === 'claude' ? 'Claude' : 'Gemini') + '): ' + m);
+    msgs.pop();
+  } finally {
+    rmTyping(tid); loading = false;
+    document.getElementById('sbtn').disabled = false;
+    cin.focus();
+  }
+}
+
+function addMsg(role, text) {
+  const c = document.getElementById('msgs');
+  const now = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  const w = document.createElement('div'); w.className = 'msg ' + role;
+  const av = document.createElement('div'); av.className = 'mav';
+  av.textContent = role === 'user' ? '👤' : '🏛️';
+  const inn = document.createElement('div');
+  const bub = document.createElement('div'); bub.className = 'mbub'; bub.textContent = text;
+  const meta = document.createElement('div'); meta.className = 'mmeta';
+  meta.textContent = role === 'bot' ? now + ' · ' + (provider === 'claude' ? 'Claude' : 'Gemini') : now;
+  inn.appendChild(bub); inn.appendChild(meta);
+  w.appendChild(av); w.appendChild(inn); c.appendChild(w);
+  c.scrollTop = c.scrollHeight;
+}
+
+function addTyping() {
+  const c = document.getElementById('msgs');
+  const id = 'ty' + Date.now();
+  const w = document.createElement('div'); w.className = 'msg bot typing'; w.id = id;
+  const av = document.createElement('div'); av.className = 'mav'; av.textContent = '🏛️';
+  const b = document.createElement('div'); b.className = 'mbub';
+  for (let i = 0; i < 3; i++) { const d = document.createElement('div'); d.className = 'tdot'; b.appendChild(d); }
+  w.appendChild(av); w.appendChild(b); c.appendChild(w); c.scrollTop = c.scrollHeight;
+  return id;
+}
+
+function rmTyping(id) { const el = document.getElementById(id); if (el) el.remove(); }
+
+function clearChat() {
+  msgs = [];
+  document.getElementById('msgs').innerHTML = '<div class="welcome" id="welcome"><div class="welcome-icon">🏛️</div><h3>대화가 초기화되었습니다</h3><p>System Prompt를 수정한 뒤 다시 테스트해보세요.</p></div>';
+  hideErr();
+}
+
+function showErr(m) { const el = document.getElementById('err'); el.textContent = m; el.classList.add('show'); }
+function hideErr() { document.getElementById('err').classList.remove('show'); }
+</script>
+</body>
+</html>
